@@ -69,7 +69,7 @@ attention.
 \alsim is at [[https://www.github.com/drghirlanda/alsim]]. You can install
 it in several ways:
 - Using =devtools= in R: =devtools::install_github(
-  "drghirlanda/alsim" )=.
+  "drghirlanda/alsim/alsim" )= (yes, you need the =alsim= twice).
 - Download the whole =github= project and then run =R CMD INSTALL
   alsim= from the top-level \alsim directory.
 - Download the =.tar.gz= file from =github= and then run =R CMD
