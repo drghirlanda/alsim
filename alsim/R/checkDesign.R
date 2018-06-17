@@ -1,0 +1,3 @@
+checkDesign <-
+function( design ) {
+}

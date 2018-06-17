@@ -1,0 +1,894 @@
+#+TITLE: \alsim, an associative learning simulator
+#+AUTHOR: Stefano Ghirlanda
+#+DATE: /Very preliminary version of \today/
+#+OPTIONS: toc:nil ':t
+#+PROPERTY: header-args:R :session *R* :colnames no :exports both :eval no-export
+#+LATEX_CLASS_OPTIONS: [12pt,letterpaper]
+#+LATEX_HEADER: \usepackage[margin=1in]{geometry}
+#+LATEX_HEADER: \usepackage[capitalize]{cleveref}
+#+LATEX_HEADER: \usepackage{natbib}
+#+LATEX_HEADER: \usepackage{array,xspace}
+#+LATEX_HEADER: \usepackage[x11names,pdftex]{xcolor}
+#+LATEX_HEADER: \usepackage[small]{titlesec}
+#+LATEX_HEADER: \usepackage{booktabs}
+#+LATEX_HEADER: \usepackage[footnotesize]{caption}
+#+LATEX_HEADER: \usepackage[shrink=30,stretch=0]{microtype}
+#+LATEX_HEADER: \newcommand{\cites}[1]{\citeauthor{#1}'s (\citeyear{#1})}
+#+LATEX_HEADER: \usepackage{url}
+#+LATEX_HEADER: \urlstyle{rm}
+#+LATEX_HEADER: \usepackage[scaled=0.75]{beramono}
+#+LATEX_HEADER:\setminted{fontsize=\normalsize,linenos=true}
+#+LATEX_HEADER: \newcommand\alsim{\texttt{Alsim}\xspace}
+
+#+BEGIN_SRC R :exports none :tangle examples.R :results none
+library(alsim)
+#+END_SRC
+
+* Introduction
+
+** Scope
+
+\alsim is an associative learning simulator for models that can be
+cast in the "kernel machine" framework described in
+citet:Ghirlanda2015,Ghirlanda2018:EndpointPreprint. These include the
+cite:Rescorla1972 model, cites:Pearce1987 "configural" model,
+cites:Brandon2000 "replaced elements" model, and others. \alsim is a
+trial-based simulator in which each trial is constituted of an
+experience with one or more stimuli followed by a reinforcement
+value. The simulator tracks the values of associative strengths
+between stimuli and (depending on your theoretical leaning) responses
+or reinforcers. 
+
+\alsim is not a real-time simulator, and it does not support internal
+structure of trials, such as sequences of stimuli or responses.
+
+** Overview
+
+\alsim is programmed in R citep:RCoreTeam2017. A model is created with
+the =newModel= function, which accepts two arguments: a generalization
+function and a learning rate.[fn:learnrate] See
+cref:sec:generalization-representation for an explanation of
+generalization functions. Once created, a model can be trained with
+the following functions:
+
+- =trial=: :: performs a single trial with a stimulus.
+- =phase=: :: can perform multiple trial with multiple stimuli.
+- =experiment=: :: can train multiple subject groups, each group
+                  undergoing multiple training phases.
+After training, associative strengths can be calculated with the =V=
+function and visualized with the =Vplot= function. See Sections
+[[Examples]] and [[Experiments]] for examples.
+
+[fn:learnrate] Extension are planned in which the learning rate can be
+specified per stimulus and per \lambda value. Other extensions will
+enable changing learning rates through learning, for example to model
+attention. 
+
+** Installation
+
+\alsim is at [[https://www.github.com/drghirlanda/alsim]]. You can install
+it in several ways:
+- Using =devtools= in R: =devtools::install_github(
+  "drghirlanda/alsim" )=.
+- Download the whole =github= project and then run =R CMD INSTALL
+  alsim= from the top-level \alsim directory.
+- Download the =.tar.gz= file from =github= and then run =R CMD
+  INSTALL alsim_X.Y.tar.gz=, where =X.Y= is the version number.
+This assumes you have permissions to install. On a personal Linux
+machine, you can probably start R as =sudo R= and things will work.
+
+* Examples
+** Acquisition and external inhibition
+
+The following code simulates cites:Pearce1987a model in acquisition
+trials with a stimulus $A$ followed by an external inhibition test
+with a compound, $AB$, of $A$ and a novel stimulus $B$:
+#+BEGIN_SRC R :tangle examples.R
+  Mod <- newModel( pearce, 0.1 )       # create a pearce model
+  A  <- c(1,0)                         # create stimulus A
+  AB <- c(1,1)                         # create stimulus AB
+  Mod <- phase( Mod, list(A=c(30,1)) ) # train 30 trials with lambda=1
+  VA <- V( Mod, "A", 0:30 )            # calculate VA across trials
+  VAB <- V( Mod, "AB" )                # calculate VAB (at trial n)
+#+END_SRC
+Here is some more explanation by line number:
+1. =newModel= creates a model using a generalization function
+   (=pearce=) and learning rate (0.1).
+2. Each stimulus is a vector, in this example with two elements. In
+   =A=, only the first one is active, signifying the presence of $A$.
+3. In =AB=, both elements are active. Thus the second element
+   signifies the presence of $B$.
+4. The =phase= function runs training trials. A phase is a named list
+   with names corresponding to stimuli. Each list element is a
+   2-element vector. The first element is the number of trials with
+   that stimulus, the second the reinforcement value. Thus =list(
+   A=c(30,1) )= specifies to train $A$ for 30 trials, with
+   reinforcement value of 1. *Note:* =phase= does not change the model
+   argument. It returns a copy that has been modified according to the
+   training.
+5. The =V= function calculates associative strength. It also accepts
+   stimulus names as strings, and trials at which associative strength
+   should be calculated.
+6. If no trial argument is given to =V=, the function returns the
+   associative strength after the last trial. Hence =V( Mod, "AB")=
+   calculates the associative strength of $AB$ at a test following
+   acquisition.
+
+** Summation
+
+The following example shows how to mix trials with different
+stimuli. It is a simple summation experiment with the replaced
+elements model:
+#+NAME: remSummation
+#+BEGIN_SRC R :tangle examples.R :results graphics :file figures/remSummation.pdf :width 4 :height 2.5
+  alsim.options$rem$r <- 0.25 # set replacement factor
+  Mod <- newModel( rem, .1 )  # create a rem model
+
+  A <-  c( 1, 0 ) # create stimuli A, B, and AB
+  B <-  c( 0, 1 )
+  AB <- c( 1, 1 )
+
+  Mod <- phase(      # train the model with 50 presentations
+      Mod,           # of A and 50 of B, all rewarded with a
+      list(
+	  A=c(50,1), # 50 trials with A and reinforcement = 1
+	  B=c(50,1)  # 50 trials with B and reinforcement = 1 
+      )
+  )
+
+  # visualize results:
+  Vplot( Mod, c("A","B","AB"), 0:50 )
+#+END_SRC
+
+The last line plots the associative strengths of the given
+stimuli. Trial 0 represents the state of the model prior to any
+learning. Any stimulus can be plotted, even if it was not part of
+training. In this case, we plot =AB= as well as =A= and =B= to assess
+summation. The =Vplot= produces a plot such as this one:
+#+ATTR_LATEX: :width .5\textwidth :center t :float nil
+#+RESULTS: remSummation
+[[file:figures/remSummation.pdf]]
+
+The lines in the figure are somewhat jagged because they represent the
+outcome of a single simulation. You may be used to seeing smoother
+lines representing theoretical learning curves or averages of many
+simulations. The =experiment= function detailed in the next section
+can run multiple subjects, after which the same =Vplot= function can
+be used to visualize average learning curves.
+
+=Vplot= is meant for quick visualization and not for
+publication-quality output, for which R has plenty of options.
+
+* Experiments
+
+Training phases can be grouped together in experimental designs, which
+are lists of experimental groups, each experimental group being itself
+a list of phases. Phases are in the format seen above. For example,
+cites:Kamin1969 classic blocking design can be expressed as:
+#+BEGIN_SRC R :tangle examples.R :results none
+  blocking <- list(
+      experimental=list(
+	  phase1=list( A=c(50,1) ),
+	  phase2=list( AB=c(50,1) )
+      ),
+      control=list(
+	  phase2=list( AB=c(50,1) )
+      )
+  )
+#+END_SRC
+An experiment can be run on multiple (simulated) subjects with the
+=experiment= function. For example:
+#+NAME: pearceBlocking
+#+BEGIN_SRC R :tangle examples.R :results graphics :file figures/pearceBlocking.pdf :width 4 :height 2.5
+  A <- c(1,0)
+  B <- c(0,1)
+  AB <- c(1,1)
+  model <- newModel( pearce, 0.1 )
+  results <- experiment( model, blocking, 20 )
+  Vplot( results$experimental, c("A","B","AB"), 0:100 )
+#+END_SRC
+where the last argument to =experiment= is the number of subjects in
+each group. Aggregate results can be computed with =V= and =Vplot= as
+before. For example, the last line of the code above produces this
+plot:
+#+ATTR_LATEX: :width .5\textwidth :center t :float nil
+#+RESULTS: pearceBlocking
+[[file:figures/pearceBlocking.pdf]]
+
+In the case of blocking, all experimental subjects undergo the same
+sequence of trials, hence there is no variability across subjects. In
+experiments that mix different stimuli, however, \alsim generates
+different trial sequences for each subjects. In this cases, =Vplot=
+visualizes standard deviations as well as average associative
+strengths. For example, the following is a simulation of a feature
+negative discrimination with the cite:Rescorla1972 model (obtained as
+the replaced elements model with no replacement):
+#+NAME: rwFeatureNegative
+#+BEGIN_SRC R :tangle examples.R :results graphics :file figures/rwFeatureNegative.pdf :width 4 :height 2.5
+  A  <- c(1,0)
+  B  <- c(0,1)
+  AB <- c(1,1)
+  model <- newModel( rem, 0.1 )
+  alsim.options$rem$r <- 0
+  featureNegative <- list(
+      S=list(
+	  phase1=list(
+	      A=c(50,1),
+	      AB=c(50,0)
+	  )
+      )
+  )
+  results <- experiment( model, featureNegative, 10 )
+  Vplot( results$S, c("A","B","AB"), 0:100 )
+#+END_SRC
+And the resulting graph is:
+#+ATTR_LATEX: :width .5\textwidth :center t :float nil
+#+RESULTS: rwFeatureNegative
+[[file:figures/rwFeatureNegative.pdf]]
+
+* Generalization functions
+
+label:sec:generalization-representation Generalization functions are
+at the heart of \alsim. A generalization function tells us how the
+associative strength of a stimulus generalizes to other stimuli. For
+example, if $g(A,B)=1/2$, then half of $V_A$ generalizes to $B$.
+Introduced by cite:Pearce1987a for his "configural" model,
+generalization functions can also be considered for "elemental"
+models. For example, in the cite:Rescorla1972 model, $g(A,AB)=1$
+because $V_A$ generalizes completely to $AB$, under the hypothesis
+that $AB$ contains all of the stimulus elements in $A$. In the
+replaced elements model, on the other hand, $g(A,AB)=1-r$, where $r$
+is the replacement factor, because only a fraction $1-r$ of $A$'s
+elements are present in $AB$.
+
+To make a long story short, cites:Pearce1987a configural formalism can
+be generalized to apply to elemental as well as configural models
+citep:Ghirlanda2015,Ghirlanda2018:EndpointPreprint by thinking in
+terms of generalization functions.
+
+* Stimulus representations
+
+Generalization function will typically return different values for
+different stimulus representations. Stimulus representations are thus
+an integral part of modeling. For example, =pearce= (or any other
+generalization function) will return zero if $A$ and $B$ have no
+common elements:
+#+BEGIN_SRC R :tangle no :results output :exports both
+  A <- c(1,0)
+  B <- c(0,1)
+  pearce( "A", "B" )
+#+END_SRC
+
+#+RESULTS:
+: [1] 0
+But it will return non-zero values when common elements are assumed:
+#+BEGIN_SRC R :tangle no :results output :exports both
+  A <- c(1,0,1)
+  B <- c(0,1,1)
+  pearce( "A", "B" )
+#+END_SRC
+
+#+RESULTS:
+: [1] 0.25
+
+* Models
+
+\alsim comes with an implementation of the following models:
+
+- =pearce= :: is the model in  cite:Pearce1987a,Pearce1994a.
+- =elemental= :: is a generic "elemental" model in which
+                 $g(X,Y)=\sum_i X_i Y_i$. This is the
+                 cite:Rescorla1972 model with general stimulus
+                 representations, including the possibility of unique
+                 cues, common cues, etc. These cues have to be set
+                 explicitly in stimulus vectors.
+- =rem= :: is the replaced elements model in
+           cite:Brandon2000a,Wagner2001a,Wagner2003,Wagner2008. Setting
+           the replacement rate to zero yields the cite:Rescorla1972
+           model. Note that =rem= takes into account replacement
+           without having to construct stimulus representations with
+           replaced elements. It is be possible to use =elemental= to
+           model the replaced elements model, but one would have to
+           construct appropriate stimulus vectors explicitly (see
+           Section [[Issues]]).
+
+* Making your own
+
+To add a model to \alsim, all you need to do is write a generalization
+function. The generalization function must take as input two stimulus
+names, as strings, and must return a single numeric value. There are
+two possible approaches. The first is to operate on vector
+representations of stimuli. The second is two operate on stimulus
+names only. As an illustration of the first approach, imagine that you
+want to add a silly model in which generalization depends only on the
+first component of each vector. If they are equal, generalization is
+1, otherwise it is 0. This is the way to do it:
+#+BEGIN_SRC R :tangle no :results none :exports code
+  silly <- function( X, Y ) {
+      vX <- name2vec( X )
+      vY <- name2vec( Y )
+      if( vX[1] == vY[1] )
+	  g <- 1
+      else
+	  g <- 0
+      g
+  }
+#+END_SRC
+Here, lines 2 and 3 retrieve the vector associated with the names =X=
+and =Y=. To see =silly= at work, we first define some stimulus vectors:
+#+BEGIN_SRC R :tangle no :results none :exports code
+  X <- c(1,1)
+  Y <- c(1,0)
+  Z <- c(0,1)
+#+END_SRC
+After which we can try:
+#+BEGIN_SRC R :tangle no :results output :exports both
+  silly( "X", "Y" )
+#+END_SRC
+
+#+RESULTS:
+: [1] 1
+or:
+#+BEGIN_SRC R :tangle no :results output :exports both
+  silly( "X", "Y" )
+#+END_SRC
+
+#+RESULTS:
+: [1] 1
+Note that =silly= fails if the vector is not defined:
+#+BEGIN_SRC R :tangle no :results output :exports both
+  silly( "X", "undefined stimulus name" )
+#+END_SRC
+
+#+RESULTS:
+: Error in get(X, pos = 1, mode = "numeric") : 
+:   object 'undefined stimulus name' of mode 'numeric' was not found
+
+The second approach to writing generalization functions does not
+relying on defining vectors, but rather it assigns generalization
+values to named stimuli directly. If you want/need to take this route,
+here is a template:
+#+BEGIN_SRC R :tangle no :results none :exports code
+  manual <- function( X, Y ) {
+      known <- c("A","B","AB")
+
+      if( !( X %in% known ) || !( Y %in% known ) )
+	  stop(paste(
+	      "use only known stimuli:",
+	      paste(known,collapse=" ")
+	  ) )
+
+      g <- matrix( 0, nrow=3, ncol=3 )
+      rownames(g) <- known
+      colnames(g) <- known
+      g["A","A"] <- g["B","B"] <- g["AB","AB"] <- 1
+      g["A","B"] <- g["B","A"] <- 0
+      g["A","AB"] <- g["AB","A"] <- 1/2
+      g["B","AB"] <- g["AB","B"] <- 1/2
+
+      g[X,Y]
+  }
+#+END_SRC
+This defines generalization only between =A=, =B=, and =AB=. For
+example:
+#+BEGIN_SRC R :tangle no :results output :exports both
+  manual( "A", "AB" )
+#+END_SRC
+
+#+RESULTS:
+: [1] 0.5
+But:
+#+BEGIN_SRC R :tangle no :results output :exports both
+  manual( "A", "C" )
+#+END_SRC
+
+#+RESULTS:
+: Error in manual("A", "C") : use only known stimuli: A B AB
+
+* Issues
+
+- =rem= is slow because it computes common pairs every time. It would
+  be better to have a =remify= function to modify vectors and then use
+  =elemental= in the model. The function would need to know the
+  maximum number of stimulus pairs, and it would need a way to index
+  them. Probably =combn(n,2)= where $n$ is the size of the original
+  vectors. Then we can add $n(n-1)/2$ components to represent pairs
+  and set them to $r$ while we set to $1-r$ the components that
+  correspond to the elements of each pair.
+
+bibliographystyle:plainnat
+bibliography:~/Dropbox/Science/References/database.bib
+
+* Code                                                             :noexport:
+
+#+NAME: document
+#+BEGIN_SRC sh :exports none :eval no-export :results output :tangle no
+sudo Rscript -e "devtools::document('alsim')"
+#+END_SRC
+
+#+RESULTS: document
+: Writing V.Rd
+: Writing newModel.Rd
+: Writing trial.Rd
+
+#+NAME: build
+#+BEGIN_SRC sh :exports none :eval no-export :results output :tangle no
+sudo Rscript -e "devtools::build('alsim')"
+#+END_SRC
+
+#+RESULTS: build
+: * checking for file ‘/home/stefano/Dropbox/Science/Active/alsim/alsim/DESCRIPTION’ ... OK
+: * preparing ‘alsim’:
+: * checking DESCRIPTION meta-information ... OK
+: * checking for LF line-endings in source and make files and shell scripts
+: * checking for empty or unneeded directories
+: * looking to see if a ‘data/datalist’ file should be added
+: * building ‘alsim_0.1.tar.gz’
+: [1] "/home/stefano/Dropbox/Science/Active/alsim/alsim_0.1.tar.gz"
+
+#+NAME: install
+#+BEGIN_SRC sh :exports none :eval no-export :results output :tangle no
+sudo Rscript -e "devtools::install('alsim')"
+#+END_SRC
+
+#+RESULTS: install
+
+** DESCRIPTION
+
+#+BEGIN_SRC sh :results silent :tangle alsim/DESCRIPTION :eval no
+Package: alsim
+Type: Package
+Title: What the package does (short line)
+Version: 0.1
+Date: 2018-06-16
+Author: Stefano Ghirlanda
+Maintainer: Stefano Ghirlanda <drghirlanda@gmail.com>
+Description: An associative learning simulator
+License: GPL 3
+#+END_SRC
+
+** \alsim options
+
+#+BEGIN_SRC R :exports code :tangle alsim/R/options.R :results none
+  alsim.options <- list(
+      rem=list(r=0)
+  )
+#+END_SRC
+
+** =name2vec=
+
+#+BEGIN_SRC R :tangle alsim/R/name2vec.R
+  ##' Look up a vector by name
+  ##'
+  ##' Given an object name as a string, name2vec returns the object
+  ##' itself. It only looks for numeric objects in the parent
+  ##' environment.
+  ##' @title name2vec
+  ##' @param X A numeric object's name
+  ##' @return The numeric object itself
+  ##' @author Stefano Ghirlanda 
+  name2vec <- function( X ) {
+      get( X, pos=1, mode="numeric" )
+  }
+#+END_SRC
+
+** =rem=
+
+#+NAME: rem
+#+BEGIN_SRC R :tangle alsim/R/rem.R
+  ##' Generalization function for the "replaced elements" model.
+  ##'
+  ##' rem() computes generalization based on the "replaced elements"
+  ##' model.
+  ##' @title rem
+  ##' @param X Name of stimulus vector (as string) 
+  ##' @param Y Name of stimulus vector (as string)
+  ##' @return Generalization value
+  ##' @author Stefano Ghirlanda
+  rem <- function( X, Y ) {
+      X <- name2vec( X )
+      Y <- name2vec( Y )
+
+      nX <- sum(X)
+      nY <- sum(Y)
+      nXY <- sum(X*Y)
+
+      r <- alsim.options$rem$r
+
+      ## each cue comes with a 1-r inhibition factor:
+      X <- (1-r)^(nX-1) * X
+      Y <- (1-r)^(nY-1) * Y
+
+      ## this determines the number of common pairs, which restores some
+      ## of the inhibited elements. we construct pairs of elements with
+      ## combn() and then use duplicated() to count the common pairs:
+      wX <- which(X>0)
+      wY <- which(Y>0)
+      if( wX>1 && wY>1 ) {
+	  pX <- t(combn(which(X>0),2))
+	  pY <- t(combn(which(Y>0),2))
+	  nReplacements <- sum(duplicated(rbind(pX,pY)))
+      } else {
+	  nReplacements <- 0
+      }
+
+      sum( X * Y ) + r * nReplacements
+  }
+#+END_SRC
+
+** =pearce=
+
+#+NAME: pearce
+#+BEGIN_SRC R :tangle alsim/R/pearce.R
+  ##' Generalization function for Pearce's "configural" model.
+  ##'
+  ##' rem() computes generalization according to Pearce's (1987,1994)
+  ##' "configural" model of associative learning.  model.
+  ##' @title pearce
+  ##' @param X Name of stimulus vector (as string)
+  ##' @param Y Name of stimulus vector (as string)
+  ##' @return Generalization value
+  ##' @author Stefano Ghirlanda
+  pearce <- function( X, Y ) {
+      X <- name2vec( X )
+      Y <- name2vec( Y )
+      sum( X*Y )^2 / (sum( X*X ) * sum( Y*Y ))
+  }
+#+END_SRC
+
+** =elemental=
+
+#+NAME: elemental
+#+BEGIN_SRC R :tangle alsim/R/elemental.R
+  ##' Generalization function for elemental models.
+  ##'
+  ##' elemental() computes generalization according the inner product
+  ##' rule appropriate for elemental models of associative learning.
+  ##' @title elemental
+  ##' @param X Name of stimulus vector (as string)
+  ##' @param Y Name of stimulus vector (as string)
+  ##' @return Generalization value
+  ##' @author Stefano Ghirlanda
+  elemental <- function( X, Y ) {
+      X <- name2vec( X )
+      Y <- name2vec( Y )
+      sum( X*Y )
+  }
+#+END_SRC
+
+** =newModel=
+
+#+BEGIN_SRC R :tangle alsim/R/newModel.R
+  ##' Create a new alsim model
+  ##'
+  ##' newModel creates a model given a generalization function and a learning rate
+  ##' @title newModel
+  ##' @param genFunction An alsim generalization function
+  ##' @param learnRate  A learning rate
+  ##' @return An alsim model
+  ##' @author Stefano Ghirlanda
+  newModel <- function( genFunction, learnRate ) {
+      m <- list(
+	  weights=list(),
+	  gen=genFunction,
+	  rate=learnRate,
+	  trials=c(),
+	  lambda=c(),
+	  V0=list()
+      )
+      class(m) <- "model"
+      m
+  }
+#+END_SRC
+
+** =V=
+
+#+NAME: V
+#+BEGIN_SRC R :tangle alsim/R/V.R
+  .V <- function( model, X, trial=NULL ) {
+      if( class(model) != "model" )
+	  stop( "1st argument is not a model" )
+
+      g <- list()
+      v0 <- 0
+      for( Y in names(model$weights) ) {
+	  g[[Y]] <- model$gen( Y, X )
+	  if( Y %in% names(model$V0) ) {
+	      v0 <- v0 + g[[Y]] * model$V0[[ Y ]] 
+	  }
+      }
+
+      n <- length( model$trials )
+      if( n==0 )
+	  return(v0)
+
+      v <- rep(v0,n)
+      for( Y in names(model$weights) ) {
+	  v <- v + g[[Y]] * model$weights[[ Y ]]
+      }
+
+      if( is.null(trial) ) # last trial
+	  trial <- n
+
+      if( trial[1]==0 ) {
+	  v <- c( v0, v )
+	  trial <- trial + 1
+      }
+
+      v[ trial ]
+  }
+  ##' Calculate stimulus associative strength
+  ##'
+  ##' .. content for \details{} ..
+  ##' @title V
+  ##' @param model An alsim model or list of models
+  ##' @param X A stimulus name (string)
+  ##' @param trial Trial or trials for which associative strength should
+  ##'     be calculated. If NULL, use the last available trial.
+  ##' @param aggr If TRUE, average results for all models given in input
+  ##'     and calculate standard deviation. If FALSE, return results for
+  ##'     all models.
+  ##' @return If aggr==TRUE, a 2-dim matrix with rows corresponding to
+  ##'     average and standard deviation, and columns corresponding to
+  ##'     trials. If aggr==FALSE, a matrix with one row per model, and
+  ##'     columns corresponding to trials.
+  ##' @author Stefano Ghirlanda
+  V <- function( model, X, trial=NULL, aggr=TRUE ) {
+      if( class(model)=="model" ) {
+	  avg <- .V( model, X, trial )
+	  outputs <- matrix( rbind( avg, rep(NA,length(avg)) ), nrow=2 )
+	  rownames(outputs) <- c("avg","std")
+	  return( outputs )
+      }
+      outputs <- NULL
+      for( i in 1:length(model) ) {
+	  outputs <- rbind(
+	      outputs,
+	      .V( model[[i]], X, trial )
+	  )
+      }
+      if( aggr==TRUE ) {
+	  avg <- apply( outputs, 2, mean )
+	  std <- apply( outputs, 2, sd )
+	  outputs <- rbind( avg, std )
+	  rownames(outputs) <- c("avg","std")
+      } else {
+	  outputs <- matrix( outputs, nrow=length(model), byrow=TRUE )
+	  rownames(outputs) <- 1:length(model)
+	  colnames(outputs) <- trial
+      }
+      outputs
+  }
+#+END_SRC
+
+** =trial=
+
+#+NAME: trial
+#+BEGIN_SRC R :tangle alsim/R/trial.R
+  ##' Perform a single learning trial
+  ##'
+  ##' Performs a single learning trial on a model, given a stimulus X
+  ##' and desired associative strength lambda.
+  ##' @title trial
+  ##' @param model An alsim model
+  ##' @param X A stimulus name (as string)
+  ##' @param lambda Desired associative strength
+  ##' @return Updated model
+  ##' @author Stefano Ghirlanda
+  trial <- function( model, X, lambda ) {
+      n <- length( model$trials )
+
+      if( ! X %in% names(model$weights) ) {
+	  model$weights[[ X ]] <- rep(0,n)
+      }
+
+      for( Y in names(model$weights) ) {
+	  if( Y == X ) {
+	      v <- as.numeric( V( model, X )[1,] )
+	      d <- model$rate * ( lambda - v )
+	  } else {
+	      d <- 0
+	  }
+	  if( n ) {
+	      wOld <- model$weights[[ Y ]][ n ]
+	  } else {
+	      wOld <- 0
+	  }
+	  wNew <-  wOld + d
+	  model$weights[[ Y ]] <- c( model$weights[[ Y ]], wNew )
+      }
+
+      model$trials <- c( model$trials, X )
+      model$lambda <- c( model$lambda, lambda )
+
+      model
+  }
+#+END_SRC
+
+** =phase=
+
+#+NAME: phase
+#+BEGIN_SRC R :tangle alsim/R/phase.R
+  phase <- function( model, trials ) {
+      stimuli <- names(trials)
+      nTrials <- sum(unlist(lapply( trials, function(x){x[1]} )))
+      nStim <- length(stimuli)
+      sTrials <- NULL
+      vLambda <- NULL
+      for( s in stimuli ) {
+	  n <- trials[[s]][1]
+	  sTrials <- c( sTrials, rep(s, n) )
+	  vLambda <- c( vLambda, rep(trials[[s]][2], n) )
+      }
+      shuffled <- sample( 1:nTrials )
+      for( t in shuffled ) {
+	  model <- trial( model, sTrials[t], vLambda[t] )
+      }
+      model
+  }
+#+END_SRC
+
+#+RESULTS: phase
+
+** =experiment=
+
+#+BEGIN_SRC R :tangle alsim/R/experiment.R
+  checkDesign <- function( design ) {
+  }
+
+  experiment <- function( model, design, group.size ) {
+      checkDesign( design )
+
+      group <- names( design )
+
+      results <- list()
+
+      for( g in names( design ) ) {
+	  results[[g]] <- rep( list(), group.size )
+	  for( i in 1:group.size ) {
+	      results[[g]][[i]] <- model
+	      n <- length( design[[g]] )
+	      for( k in 1:n ) {
+		  results[[g]][[i]] <- phase(
+		      results[[g]][[i]],
+		      design[[g]][[k]]
+		  )
+	      }
+	  }
+      }
+      results
+  }
+#+END_SRC
+
+#+RESULTS:
+
+** =Vplot==
+
+#+NAME: Vplot
+#+BEGIN_SRC R :tangle alsim/R/Vplot.R
+  Vplot <- function( model, stimuli, trials, jitter=0 ) {
+      Vavg <- list()
+      Vstd <- list()
+      for( X in stimuli ) {
+	  v <- V( model, X, trials )
+	  Vavg[[X]] <- v[1,]
+	  Vstd[[X]] <- v[2,]
+      }
+      Tmax <- max(trials)
+      Tmin <- min(trials)
+      Vmax <- max( 1, max( unlist( lapply( Vavg, max ) ) ) )
+      Vmin <- min( 0, min( unlist( lapply( Vavg, min ) ) ) )
+      Vmax <- ( 1 + round(4*Vmax) )/4
+      Vmin <- ( round(4*Vmin) - 1 )/4
+      oldPar <- par( mar=c(4,4,2,5), las=1 )
+      plot(
+	  c(Tmin,Tmax),
+	  c(Vmin, Vmax),
+	  pch=NA,
+	  xlab="Trial",
+	  ylab="V",
+	  xaxs="i",
+	  yaxs="i",
+	  yaxt="n"
+      )
+      axis( 2, seq(Vmin,Vmax,.5) )
+      abline( h=seq(Vmin,Vmax,.25), lty=3 )
+      nStim <- length(stimuli)
+      for( i in 1:nStim ) {
+	  j <- runif( length(trials), -jitter, +jitter )
+	  y <- Vavg[[ stimuli[i] ]] + j
+	  z <- Vstd[[ stimuli[i] ]]
+	  lines( 
+	      trials,
+	      y,
+	      col=i,
+	      lwd=2,
+	      xpd=TRUE
+	  )
+	  polygon(
+	      c(trials,rev(trials)),
+	      c(y-z,rev(y+z)),
+	      col=adjustcolor(i,alpha=.2),
+	      border=NA
+	  )
+      }
+      legend(
+	  Tmax, Vmax,
+	  legend=stimuli,
+	  col=1:nStim, lty=1, bty="n",
+	  xpd=TRUE, lwd=2
+      )
+      if( Vmin<0 ) abline( h=0, lty=3 )
+      par( oldPar )
+  }
+#+END_SRC
+
+#+RESULTS: Vplot
+
+#+BEGIN_SRC R :tangle alsim/R/common.R
+  common <- function( X, active, commonFraction ) {
+      n <- length(X)
+      Y <- rep( 0, n )
+      activeX <- which(X==1)
+      nActiveX <- length(activeX)
+      common <- round(n*commonFraction)
+      nActiveCommon <- min(common,nActiveX)
+      Y[ activeX[ 1:nActiveCommon ] ] <- 1
+      notCommon <- setdiff( 1:n, activeX )
+      Y[ notCommon[ 1:(active-nActiveCommon) ] ] <- 1
+      Y
+  }
+#+END_SRC
+
+* Guillermo                                                        :noexport:
+
+#+BEGIN_SRC R :tangle no
+  X <- c(1,0,0,0,1,1,1)
+  Y <- c(0,1,0,0,1,1,1)
+  A <- c(0,0,1,0,0,0,1)
+  B <- c(0,0,0,1,0,0,1)
+  Z <- c(0,0,0,0,0,0,1)
+  AX <- as.numeric( A|X )
+  BY <- as.numeric( B|Y )
+
+  n <- 40
+
+  esber=list(
+      S=list(
+	  phase1=list(
+	      A=c(n,1),
+	      B=c(n,0),
+	      Z=c(n,0)
+	  ),
+	  phase2=list(
+	      AX=c(n,.75),
+	      BY=c(n,.25),
+	      A=c(n,1),
+	      B=c(n,0),
+	      Z=c(n,0)
+	  )
+      )
+  )
+
+  alsim.options$rem$r <- 0.25
+
+  resultsPearce <- experiment(
+      newModel( pearce, .2 ),
+      esber,
+      group.size=25
+  )
+  mrem <- memoise(rem)
+  resultsRem <- experiment(
+      newModel( mrem, .2 ),
+      esber,
+      group.size=10
+  )
+  par( mfrow=c(1,2) )
+  Vplot( resultsPearce$S, c("A","B","X","Y"), (3*n):(7*n) )
+  title( "pearce" )
+  Vplot( resultsRem$S, c("A","B","X","Y"), (3*n):(7*n) )
+  title( "rem" )
+#+END_SRC
+
+#+RESULTS:
+
