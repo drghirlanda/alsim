@@ -685,7 +685,16 @@ License: GPL 3
       for( Y in names(model$weights) ) {
 	  if( Y == X ) {
 	      v <- as.numeric( V( model, X )[1,] )
-	      d <- model$rate * ( lambda - v )
+	      if( is.numeric(model$rate) ) {
+		  d <- model$rate * ( lambda - v )
+	      } else if( is.function(model$rate) ) {
+		  rateOut <- model$rate( model, X, lambda )
+		  r <- rateOut$rate
+		  model <- rateOut$model
+		  d <- r * ( lambda -v )
+	      } else {
+		  stop( "model$rate must be a numeric or a function" )
+	      }
 	  } else {
 	      d <- 0
 	  }
