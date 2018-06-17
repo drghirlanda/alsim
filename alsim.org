@@ -516,6 +516,45 @@ License: GPL 3
   }
 #+END_SRC
 
+** =remify=
+
+#+NAME: remify
+#+BEGIN_SRC R :tangle alsim/R/remify.R
+  ##' Modify stimulus vectors according to the "replaced elements" model.
+  ##'
+  ##' remify(X) modifies stimulus vector X according to the
+  ##' "replaced elements" model, so that the elemental() generalization
+  ##' function can be used on remify'ed vectors to simulate the replaced
+  ##' elements model.
+  ##' @title remify
+  ##' @param X Name of stimulus vector (as string)
+  ##' @return Generalization value
+  ##' @author Stefano Ghirlanda
+  remify <- function( X ) {
+      X <- name2vec( X )
+      nX <- sum(X)
+      r <- alsim.options$rem$r
+
+      ## each cue after the first one comes with a 1-r inhibition
+      ## factor:
+      X <- (1-r)^(nX-1) * X
+
+      ## number of potential element pairs:
+      pX <- combn( length(X), 2 )
+
+      ## vector as long as there are pairs
+      P <- rep( 0, ncol(pX) )
+
+      ## set each pair indicator to 2*r if the pair is set in X:
+      for( i in 1:length(P) ) {
+	  if( sum( X[ pX[,i] ] > 0 ) == 2 )
+	      P[i] <- 2 * r
+      }
+
+      c(X, P)
+  }
+#+END_SRC
+
 ** =pearce=
 
 #+NAME: pearce
