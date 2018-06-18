@@ -385,16 +385,6 @@ But:
 #+RESULTS:
 : Error in manual("A", "C") : use only known stimuli: A B AB
 
-* Issues
-
-- =rem= is slow because it computes common pairs every time. It would
-  be better to have a =remify= function to modify vectors and then use
-  =elemental= in the model. The function would need to know the
-  maximum number of stimulus pairs, and it would need a way to index
-  them. Probably =combn(n,2)= where $n$ is the size of the original
-  vectors. Then we can add $n(n-1)/2$ components to represent pairs
-  and set them to $r$ while we set to $1-r$ the components that
-  correspond to the elements of each pair.
 
 bibliographystyle:plainnat
 bibliography:~/Dropbox/Science/References/database.bib
@@ -472,49 +462,6 @@ License: GPL 3
   }
 #+END_SRC
 
-** =rem=
-
-#+NAME: rem
-#+BEGIN_SRC R :tangle alsim/R/rem.R
-  ##' Generalization function for the "replaced elements" model.
-  ##'
-  ##' rem() computes generalization based on the "replaced elements"
-  ##' model.
-  ##' @title rem
-  ##' @param X Name of stimulus vector (as string) 
-  ##' @param Y Name of stimulus vector (as string)
-  ##' @return Generalization value
-  ##' @author Stefano Ghirlanda
-  rem <- function( X, Y ) {
-      X <- name2vec( X )
-      Y <- name2vec( Y )
-
-      nX <- sum(X)
-      nY <- sum(Y)
-      nXY <- sum(X*Y)
-
-      r <- alsim.options$rem$r
-
-      ## each cue comes with a 1-r inhibition factor:
-      X <- (1-r)^(nX-1) * X
-      Y <- (1-r)^(nY-1) * Y
-
-      ## this determines the number of common pairs, which restores some
-      ## of the inhibited elements. we construct pairs of elements with
-      ## combn() and then use duplicated() to count the common pairs:
-      wX <- which(X>0)
-      wY <- which(Y>0)
-      if( wX>1 && wY>1 ) {
-	  pX <- t(combn(which(X>0),2))
-	  pY <- t(combn(which(Y>0),2))
-	  nReplacements <- sum(duplicated(rbind(pX,pY)))
-      } else {
-	  nReplacements <- 0
-      }
-
-      sum( X * Y ) + r * nReplacements
-  }
-#+END_SRC
 
 ** =remify=
 
@@ -535,25 +482,32 @@ License: GPL 3
       nX <- sum(X)
       r <- alsim.options$rem$r
 
-      ## each cue after the first one comes with a 1-r inhibition
-      ## factor:
-      X <- (1-r)^(nX-1) * X
+      ## inhibition factor for a stimulus with nX elements:
+      f <- (1-r)^(nX-1)
+    
+      X <- f * X
 
-      ## number of potential element pairs:
+      ## this is the number of potential element pairs:
       pX <- combn( length(X), 2 )
 
       ## vector as long as there are pairs
       P <- rep( 0, ncol(pX) )
 
       ## set each pair indicator to 2*r if the pair is set in X:
+      activePairs <- 0
       for( i in 1:length(P) ) {
-	  if( sum( X[ pX[,i] ] > 0 ) == 2 )
-	      P[i] <- 2 * r
+	  if( sum( X[ pX[,i] ] > 0 ) == 2 ) {
+	      P[i] <- nX*( 1 - f^2 )
+	      activePairs <- activePairs + 1
+	  }
       }
-
+      P <- sqrt( P / activePairs )
+    
       c(X, P)
   }
 #+END_SRC
+
+#+RESULTS: remify
 
 ** =pearce=
 
@@ -594,6 +548,8 @@ License: GPL 3
       sum( X*Y )
   }
 #+END_SRC
+
+#+RESULTS: elemental
 
 ** =newModel=
 
