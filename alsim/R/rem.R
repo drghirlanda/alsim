@@ -24,9 +24,7 @@ rem <- function( X, Y ) {
     ## this determines the number of common pairs, which restores some
     ## of the inhibited elements. we construct pairs of elements with
     ## combn() and then use duplicated() to count the common pairs:
-    wX <- which(X>0)
-    wY <- which(Y>0)
-    if( wX>1 && wY>1 ) {
+    if( nX>1 && nY>1 ) {
 	pX <- t(combn(which(X>0),2))
 	pY <- t(combn(which(Y>0),2))
 	nReplacements <- sum(duplicated(rbind(pX,pY)))
