@@ -397,9 +397,6 @@ sudo Rscript -e "devtools::document('alsim')"
 #+END_SRC
 
 #+RESULTS: document
-: Writing V.Rd
-: Writing newModel.Rd
-: Writing trial.Rd
 
 #+NAME: build
 #+BEGIN_SRC sh :exports none :eval no-export :results output :tangle no
@@ -457,11 +454,11 @@ License: GPL 3
   ##' @param X A numeric object's name
   ##' @return The numeric object itself
   ##' @author Stefano Ghirlanda 
+  ##' @export
   name2vec <- function( X ) {
       get( X, pos=1, mode="numeric" )
   }
 #+END_SRC
-
 
 ** =remify=
 
@@ -477,6 +474,7 @@ License: GPL 3
   ##' @param X Name of stimulus vector (as string)
   ##' @return Generalization value
   ##' @author Stefano Ghirlanda
+  ##' @export
   remify <- function( X ) {
       X <- name2vec( X )
       nX <- sum(X)
@@ -484,7 +482,7 @@ License: GPL 3
 
       ## inhibition factor for a stimulus with nX elements:
       f <- (1-r)^(nX-1)
-    
+
       X <- f * X
 
       ## this is the number of potential element pairs:
@@ -501,8 +499,10 @@ License: GPL 3
 	      activePairs <- activePairs + 1
 	  }
       }
+      if( activePairs==0 )
+	  activePairs <- 1
       P <- sqrt( P / activePairs )
-    
+
       c(X, P)
   }
 #+END_SRC
@@ -522,6 +522,7 @@ License: GPL 3
   ##' @param Y Name of stimulus vector (as string)
   ##' @return Generalization value
   ##' @author Stefano Ghirlanda
+  ##' @export
   pearce <- function( X, Y ) {
       X <- name2vec( X )
       Y <- name2vec( Y )
@@ -542,6 +543,7 @@ License: GPL 3
   ##' @param Y Name of stimulus vector (as string)
   ##' @return Generalization value
   ##' @author Stefano Ghirlanda
+  ##' @export
   elemental <- function( X, Y ) {
       X <- name2vec( X )
       Y <- name2vec( Y )
@@ -562,6 +564,7 @@ License: GPL 3
   ##' @param learnRate  A learning rate
   ##' @return An alsim model
   ##' @author Stefano Ghirlanda
+  ##' @export
   newModel <- function( genFunction, learnRate ) {
       m <- list(
 	  weights=list(),
@@ -628,6 +631,7 @@ License: GPL 3
   ##'     trials. If aggr==FALSE, a matrix with one row per model, and
   ##'     columns corresponding to trials.
   ##' @author Stefano Ghirlanda
+  ##' @export
   V <- function( model, X, trial=NULL, aggr=TRUE ) {
       if( class(model)=="model" ) {
 	  avg <- .V( model, X, trial )
@@ -670,6 +674,7 @@ License: GPL 3
   ##' @param lambda Desired associative strength
   ##' @return Updated model
   ##' @author Stefano Ghirlanda
+  ##' @export
   trial <- function( model, X, lambda ) {
       n <- length( model$trials )
 
@@ -704,6 +709,20 @@ License: GPL 3
 
 #+NAME: phase
 #+BEGIN_SRC R :tangle alsim/R/phase.R
+  ##' Run multiple trials with multiple stimuli
+  ##'
+  ##' phase runs multiple learning trials with multiple stimuli. The
+  ##' trials argument is a list whose names are stimulus names, with
+  ##' each element a numeric vector giving the amount of trials and the
+  ##' reinforcement. Thus list( A=c(50,1) ) runs a phase with 50
+  ##' presentations of A and reinforcement of 1. When multiple stimuli
+  ##' are used, the sequence of trials is randomized.
+  ##' @title phase
+  ##' @param model An alsim model object
+  ##' @param trials A list of trial specifications (see details)
+  ##' @return An updated alsim model object
+  ##' @author Stefano Ghirlanda
+  ##' @export
   phase <- function( model, trials ) {
       stimuli <- names(trials)
       nTrials <- sum(unlist(lapply( trials, function(x){x[1]} )))
@@ -730,7 +749,16 @@ License: GPL 3
 #+BEGIN_SRC R :tangle alsim/R/experiment.R
   checkDesign <- function( design ) {
   }
-
+  ##' Run an experiment in alsim
+  ##'
+  ##' An experiment is a list of groups, a group is a list of phases. For what a phase is see the documentation to phase. 
+  ##' @title experiment
+  ##' @param model An alsim model
+  ##' @param design An experimental design
+  ##' @param group.size Hown many subjects to run in each group
+  ##' @return An updated alsim model object
+  ##' @author Stefano Ghirlanda
+  ##' @export
   experiment <- function( model, design, group.size ) {
       checkDesign( design )
 
@@ -761,6 +789,20 @@ License: GPL 3
 
 #+NAME: Vplot
 #+BEGIN_SRC R :tangle alsim/R/Vplot.R
+  ##' Plot associative strengths for an alsim model
+  ##'
+  ##' MISSING
+  ##' @title Vplot
+  ##' @param model An alsim model
+  ##' @param stimuli Stimuli whose associative strength should be
+  ##'     plotted.
+  ##' @param trials Vector of trials for which associative strengths
+  ##'     should be plotted.
+  ##' @param jitter Add vertical jitter. Sometimes useful to avoid
+  ##'     overplotting
+  ##' @return
+  ##' @author
+  ##' @export
   Vplot <- function( model, stimuli, trials, jitter=0 ) {
       Vavg <- list()
       Vstd <- list()

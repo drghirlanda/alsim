@@ -6,6 +6,7 @@
 ##' @param learnRate  A learning rate
 ##' @return An alsim model
 ##' @author Stefano Ghirlanda
+##' @export
 newModel <- function( genFunction, learnRate ) {
     m <- list(
 	weights=list(),

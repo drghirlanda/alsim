@@ -46,6 +46,7 @@
 ##'     trials. If aggr==FALSE, a matrix with one row per model, and
 ##'     columns corresponding to trials.
 ##' @author Stefano Ghirlanda
+##' @export
 V <- function( model, X, trial=NULL, aggr=TRUE ) {
     if( class(model)=="model" ) {
 	avg <- .V( model, X, trial )

@@ -1,3 +1,17 @@
+##' Plot associative strengths for an alsim model
+##'
+##' MISSING
+##' @title Vplot
+##' @param model An alsim model
+##' @param stimuli Stimuli whose associative strength should be
+##'     plotted.
+##' @param trials Vector of trials for which associative strengths
+##'     should be plotted.
+##' @param jitter Add vertical jitter. Sometimes useful to avoid
+##'     overplotting
+##' @return
+##' @author
+##' @export
 Vplot <- function( model, stimuli, trials, jitter=0 ) {
     Vavg <- list()
     Vstd <- list()

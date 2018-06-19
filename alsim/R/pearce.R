@@ -7,6 +7,7 @@
 ##' @param Y Name of stimulus vector (as string)
 ##' @return Generalization value
 ##' @author Stefano Ghirlanda
+##' @export
 pearce <- function( X, Y ) {
     X <- name2vec( X )
     Y <- name2vec( Y )

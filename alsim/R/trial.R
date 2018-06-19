@@ -8,6 +8,7 @@
 ##' @param lambda Desired associative strength
 ##' @return Updated model
 ##' @author Stefano Ghirlanda
+##' @export
 trial <- function( model, X, lambda ) {
     n <- length( model$trials )
 

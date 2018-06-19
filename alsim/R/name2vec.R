@@ -7,6 +7,7 @@
 ##' @param X A numeric object's name
 ##' @return The numeric object itself
 ##' @author Stefano Ghirlanda 
+##' @export
 name2vec <- function( X ) {
     get( X, pos=1, mode="numeric" )
 }
