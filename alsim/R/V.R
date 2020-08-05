@@ -30,20 +30,22 @@
 
     v[ trial ]
 }
-##' Calculate stimulus associative strength
+##' Calculate associative strength
 ##'
+##' V calculates the associative strengths of stimuli for a given
+##' model
 ##' @title V
 ##' @param model An alsim model or list of models
 ##' @param X A stimulus name (string)
 ##' @param trial Trial or trials for which associative strength should
-##'     be calculated. If NULL, use the last available trial.
+##'   be calculated. If NULL, use the last available trial.
 ##' @param aggr If TRUE, average results for all models given in input
-##'     and calculate standard deviation. If FALSE, return results for
-##'     all models.
+##'   and calculate standard deviation. If FALSE, return results for
+##'   all models.
 ##' @return If aggr==TRUE, a 2-dim matrix with rows corresponding to
-##'     average and standard deviation, and columns corresponding to
-##'     trials. If aggr==FALSE, a matrix with one row per model, and
-##'     columns corresponding to trials.
+##'   average and standard deviation, and columns corresponding to
+##'   trials. If aggr==FALSE, a matrix with one row per model, and
+##'   columns corresponding to trials.
 ##' @author Stefano Ghirlanda
 ##' @export
 V <- function( model, X, trial=NULL, aggr=TRUE ) {

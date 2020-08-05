@@ -20,12 +20,16 @@ all models.}
 }
 \value{
 If aggr==TRUE, a 2-dim matrix with rows corresponding to
-    average and standard deviation, and columns corresponding to
-    trials. If aggr==FALSE, a matrix with one row per model, and
-    columns corresponding to trials.
+  average and standard deviation, and columns corresponding to
+  trials. If aggr==FALSE, a matrix with one row per model, and
+  columns corresponding to trials.
 }
 \description{
-Calculate stimulus associative strength
+Calculate associative strength
+}
+\details{
+V calculates the associative strengths of stimuli for a given
+model
 }
 \author{
 Stefano Ghirlanda
