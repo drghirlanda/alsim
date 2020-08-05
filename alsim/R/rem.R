@@ -13,7 +13,6 @@ rem <- function( X, Y ) {
 
     nX <- sum(X)
     nY <- sum(Y)
-    nXY <- sum(X*Y)
 
     r <- alsim.options$rem$r
 

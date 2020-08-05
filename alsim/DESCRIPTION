@@ -7,3 +7,4 @@ Author: Stefano Ghirlanda
 Maintainer: Stefano Ghirlanda <drghirlanda@gmail.com>
 Description: An associative learning simulator
 License: GPL 3
+RoxygenNote: 7.1.1

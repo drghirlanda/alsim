@@ -27,9 +27,6 @@ If aggr==TRUE, a 2-dim matrix with rows corresponding to
 \description{
 Calculate stimulus associative strength
 }
-\details{
-.. content for \details{} ..
-}
 \author{
 Stefano Ghirlanda
 }

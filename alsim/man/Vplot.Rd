@@ -18,9 +18,15 @@ should be plotted.}
 \item{jitter}{Add vertical jitter. Sometimes useful to avoid
 overplotting}
 }
+\value{
+
+}
 \description{
 Plot associative strengths for an alsim model
 }
 \details{
 MISSING
+}
+\author{
+
 }
