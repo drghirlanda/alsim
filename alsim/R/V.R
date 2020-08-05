@@ -32,7 +32,6 @@
 }
 ##' Calculate stimulus associative strength
 ##'
-##' .. content for \details{} ..
 ##' @title V
 ##' @param model An alsim model or list of models
 ##' @param X A stimulus name (string)
